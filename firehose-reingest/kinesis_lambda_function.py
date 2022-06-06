@@ -19,7 +19,12 @@ def processRecords(records):
         recId = r['recordId']
         return_event = {}
 
-        return_event['sourcetype'] = data['sourcetype']
+        try:
+            return_event['sourcetype'] = data['sourcetype']
+            break
+        except Exception as e:
+            print("keyerror")
+            print(data)
         return_event['source'] = data['source']
         return_event['event'] = data['event']
         if data.get('time')!=None:
@@ -119,8 +124,7 @@ def getReingestionRecord(isSas, reIngestionRecord):
         return {'Data': reIngestionRecord['data']}
 
 
-def handler(event, context):
-    
+def lambda_handler(event, context):
     isSas = 'sourceKinesisStreamArn' in event
     streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']
     region = streamARN.split(':')[3]
@@ -137,7 +141,7 @@ def handler(event, context):
             continue
         projectedSize += len(rec['data']) + len(rec['recordId'])
         # 6000000 instead of 6291456 to leave ample headroom for the stuff we didn't account for
-        if projectedSize > 6000000:
+        if projectedSize < 6000000:
             totalRecordsToBeReingested += 1
             recordsToReingest.append(
                 getReingestionRecord(isSas, dataByRecordId[rec['recordId']])

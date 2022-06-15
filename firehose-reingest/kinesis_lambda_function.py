@@ -23,7 +23,7 @@ def processRecords(records):
             return_event['sourcetype'] = data['sourcetype']
             break
         except Exception as e:
-            print("keyerror")
+            print("Error:" + str(e))
             print(data)
         return_event['source'] = data['source']
         return_event['event'] = data['event']

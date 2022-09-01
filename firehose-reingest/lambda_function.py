@@ -36,7 +36,7 @@ def lambda_handler(event, context):
         client = boto3.client('firehose', region_name=region)
         streamName=firehose_dest
         
-        text=response["Body"].read().decode()
+        text = response["Body"].read().decode('utf-8')
         payload=""
         recordBatch=[]
         reingestjson={}

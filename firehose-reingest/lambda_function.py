@@ -6,6 +6,8 @@
 # Uses 3 Environment variables - firehose, region, and max_ingest
 
 import urllib.robotparser, boto3, json, re, base64, os
+from io import BytesIO
+from gzip import GzipFile
 s3=boto3.client('s3')
 
 
@@ -31,12 +33,17 @@ def lambda_handler(event, context):
     except:
         max_ingest=2
     try:
-        response=s3.get_object(Bucket=bucket, Key=key)
-        
         client = boto3.client('firehose', region_name=region)
         streamName=firehose_dest
+
+        response=s3.get_object(Bucket=bucket, Key=key)
+
+        if key.endswith('.gz'):
+            bytestream = BytesIO(response['Body'].read())
+            text=GzipFile(None, 'rb', fileobj=bytestream).read().decode('utf-8')
+        else:
+            text=response["Body"].read().decode('utf-8')
         
-        text = response["Body"].read().decode('utf-8')
         payload=""
         recordBatch=[]
         reingestjson={}
@@ -145,9 +152,6 @@ def test_event(message):
         return message
         
 
-
-
-
 def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAttempts):
     failedRecords = []
     codes = []
@@ -179,17 +183,3 @@ def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAtt
             putRecordsToFirehoseStream(streamName, failedRecords, client, attemptsMade + 1, maxAttempts)
         else:
             raise RuntimeError('Could not put records after %s attempts. %s' % (str(maxAttempts), errMsg))
-
-
-def test_event(message):
-    #if the event has had some processing, it may have additional json wrapper. The RAW event should be contained in "event"
-    #this function will attempt to extract that raw event field - if there is an error, i.e. the content isn't a json, it will return the message as is
-    try:
-        data=json.loads(message)
-        event=data['event']
-        return json.dumps(event)
-    
-    except:
-        return message
-        
-

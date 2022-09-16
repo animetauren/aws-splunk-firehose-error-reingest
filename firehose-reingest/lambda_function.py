@@ -5,7 +5,7 @@
 # Function will Drop any unsent Events back into the ORIGINATING S3 Bucket. (after timeout)
 # Uses 3 Environment variables - firehose, region, and max_ingest
 
-import urllib.robotparser, boto3, json, re, base64, os
+import urllib.robotparser, boto3, json, re, base64, os, gzip
 from io import BytesIO
 from gzip import GzipFile
 s3=boto3.client('s3')
@@ -42,7 +42,7 @@ def lambda_handler(event, context):
             bytestream = BytesIO(response['Body'].read())
             text=GzipFile(None, 'rb', fileobj=bytestream).read().decode('utf-8')
         else:
-            text=response["Body"].read().decode('utf-8')
+            text=response["Body"].read().decode()
         
         payload=""
         recordBatch=[]
@@ -57,8 +57,13 @@ def lambda_handler(event, context):
                 data=json.loads(line)
                 base64_message = data['rawData']
                 base64_bytes = base64_message.encode('utf-8')
-                message_bytes = base64.b64decode(base64_bytes)
-                message = message_bytes.decode('utf-8')
+                message_bytes = base64.b64decode(base64_bytes)                
+                #We need to check if gzip was enabled. If not we decode b64 as usual, if not we need to decompress gzipped base64 string
+                try:
+                    message = message_bytes.decode('utf-8')
+                except (UnicodeDecodeError, AttributeError):
+                    message = (gzip.decompress(message_bytes)).decode('utf-8')                    
+                    pass
                 for messageline in message.split("\n"): #process every line of the batch
                     if len(messageline)>0:
                     

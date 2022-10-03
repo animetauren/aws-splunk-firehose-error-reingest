@@ -73,18 +73,18 @@ def lambda_handler(event, context):
 
                             #get the metadata
                             if jsondata.get('source')!=None:
-                                source=jsondata['source']
+                                source=jsondata.get('source')
                             else:
                                 source='aws:reingested'
                             if jsondata.get('sourcetype')!=None:
-                                st=jsondata['sourcetype']
+                                st=jsondata.get('sourcetype')
                             else:
                                 st='aws:firehose'
                             fieldsreingest={}
                             
                             if jsondata.get('fields')!=None:
                                 
-                                fieldsreingest=jsondata['fields'] #get reingest fields
+                                fieldsreingest=jsondata.get('fields') #get reingest fields
                                 reingest_count=int(fieldsreingest['reingest'])+1 #advance counter
                                 
                                 fieldsreingest['reingest']=str(reingest_count)
@@ -113,7 +113,7 @@ def lambda_handler(event, context):
                                 
                         except Exception as e:
                             print(e)
-                            reingestjson= {'reingest':jsondata['fields'], 'sourcetype':jsondata['sourcetype'], 'source':'reingest:'+str(reingest_count), 'detail-type':'Reingested Firehose Message','event':jsondata['event']}
+                            #reingestjson= {'reingest':jsondata.get('fields'), 'sourcetype':jsondata.get('sourcetype'), 'source':'reingest:'+str(reingest_count), 'detail-type':'Reingested Firehose Message','event':jsondata['event']}
                         
                         
                         if dest=='FH':

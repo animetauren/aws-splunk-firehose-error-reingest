@@ -76,6 +76,7 @@ def lambda_handler(event, context):
                                 source=jsondata.get('source')
                             else:
                                 source='aws:reingested'
+
                             if jsondata.get('sourcetype')!=None:
                                 st=jsondata.get('sourcetype')
                             else:
@@ -85,7 +86,8 @@ def lambda_handler(event, context):
                             if jsondata.get('fields')!=None:
                                 
                                 fieldsreingest=jsondata.get('fields') #get reingest fields
-                                reingest_count=int(fieldsreingest['reingest'])+1 #advance counter
+                                reingest_count=int(fieldsreingest.get('reingest'))+1 #advance counter
+                                print("fields")
                                 
                                 fieldsreingest['reingest']=str(reingest_count)
                                 mbucket=fieldsreingest["frombucket"]
@@ -95,25 +97,24 @@ def lambda_handler(event, context):
                                 fieldsreingest["frombucket"]=bucket
                                 mbucket=bucket
                                 reingest_count=1
-                                
-                            
+
                             if reingest_count > max_ingest:
                                 #package up for S3
                                 destS3+=1
                                 if s3payload.get(mbucket)==None:
-                                    s3payload[mbucket]=json.dumps(jsondata['event'])+'\n'
+                                    s3payload[mbucket]=json.dumps(jsondata.get('event'))+'\n'
                                 else:
-                                    s3payload[mbucket]=s3payload[mbucket]+json.dumps(jsondata['event'])+'\n'
+                                    s3payload[mbucket]=s3payload[mbucket]+json.dumps(jsondata.get('event'))+'\n'
                                 dest='S3'
                             else:
-                                if jsondata['event']['eventTime']!=None:
-                                    reingestjson= {'sourcetype':st, 'source':source, 'event':jsondata['event'], 'fields': fieldsreingest, 'time':jsondata['event']['eventTime']}
+                                if jsondata.get('time')!=None:
+                                    reingestjson= {'sourcetype':st, 'source':source, 'event':jsondata.get('event'), 'fields': fieldsreingest, 'time':jsondata.get('time')}
                                 else:
-                                    reingestjson= {'sourcetype':st, 'source':source, 'event':jsondata['event'], 'fields': fieldsreingest}
-                                
+                                    reingestjson= {'sourcetype':st, 'source':source, 'event':jsondata.get('event'), 'fields': fieldsreingest}
+
                         except Exception as e:
                             print(e)
-                            #reingestjson= {'reingest':jsondata.get('fields'), 'sourcetype':jsondata.get('sourcetype'), 'source':'reingest:'+str(reingest_count), 'detail-type':'Reingested Firehose Message','event':jsondata['event']}
+                            #reingestjson= {'reingest':jsondata['fields'], 'sourcetype':jsondata['sourcetype'], 'source':'reingest:'+str(reingest_count), 'detail-type':'Reingested Firehose Message','event':jsondata['event']}
                         
                         
                         if dest=='FH':
@@ -188,3 +189,4 @@ def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAtt
             putRecordsToFirehoseStream(streamName, failedRecords, client, attemptsMade + 1, maxAttempts)
         else:
             raise RuntimeError('Could not put records after %s attempts. %s' % (str(maxAttempts), errMsg))
+

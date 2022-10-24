@@ -3,18 +3,6 @@
     "Statement": [
         {
             "Effect": "Allow",
-            "Action": "firehose:PutRecordBatch",
-            "Resource": "arn:aws:firehose:<region>:<aws account number>:deliverystream/<Re-Ingest Kinesis Firehose Name>"
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject"
-            ],
-            "Resource": "arn:aws:s3:<region>:<aws account number>:*"
-        },
-        {
-            "Effect": "Allow",
             "Action": "logs:CreateLogGroup",
             "Resource": "arn:aws:logs:<region>:<aws account number>:*"
         },
@@ -24,17 +12,9 @@
                 "logs:CreateLogStream",
                 "logs:PutLogEvents"
             ],
-            "Resource": "arn:aws:logs:<region>:<aws account number>:log-group:/aws/lambda/<Lambda ReIngest Function Name>:*"
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:Get*",
-                "s3:List*",
-                "s3-object-lambda:Get*",
-                "s3-object-lambda:List*"
-            ],
-            "Resource": "arn:aws:s3:<region>:<aws account number>:*"
-        }                        
+            "Resource": [
+                "arn:aws:logs:<region>:<aws account number>:log-group:/aws/lambda/<Kinesis Transformation Lambda Function Name>:*"
+            ]
+        }
     ]
 }

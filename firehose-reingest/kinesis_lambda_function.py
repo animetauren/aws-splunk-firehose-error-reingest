@@ -126,7 +126,8 @@ def getReingestionRecord(isSas, reIngestionRecord):
 
 def lambda_handler(event, context):
     isSas = 'sourceKinesisStreamArn' in event
-    streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']
+    #streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']
+    streamARN = event['sourceKinesisStreamArn'] if isSas else event['hostarn']
     region = streamARN.split(':')[3]
     streamName = streamARN.split('/')[1]
     records = list(processRecords(event['records']))

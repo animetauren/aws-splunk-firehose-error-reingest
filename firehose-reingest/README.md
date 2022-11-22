@@ -94,7 +94,7 @@ In Step 7, if you have added another prefix in your Firehose configuration, you 
   
 Sample IAM Roles
 
-- [S3 Re-Ingest Lambda IAM Role Example](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/S3ReingestLambdaIAMRole)  
+- [S3 Re-Ingest Lambda IAM Role Example](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/S3ReingestLambdaIAMRole.json)  
 - [Kinesis Lambda IAM Role Example](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/KinesisTransformationLambdaIAMRole.json)  
 
 # Alternative Options

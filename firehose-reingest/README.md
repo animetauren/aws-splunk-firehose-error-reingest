@@ -16,85 +16,86 @@ Note that this is a template example, that is based on re-ingesting from a Fireh
 
 Note that the "Splashback" S3 bucket where Firehose sends the failed messages also contains objects (with different prefixes) that would not necessarily be suitable to ingest from - for example, if there is a pre-processing function set up (a lambda function for the Firehose), the failiure could be caused there - these events will have a "processing-failed/" prefix. As additional processing would have been done to the payloads of these events, the contents of the "raw" event may not be what you wish to ingest into Splunk. This is why the Event notification for these functions should always include the prefix "splunk-failed/" to ensure that only those with a completed processing are read into Splunk via this "splashback" route.
 
+## Prerequisties
+- [AWS CLI Configured](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+- AWS Admin Account with proper permissions
+- Create new [Splunk HEC URI](https://docs.splunk.com/Documentation/SplunkCloud/9.0.2208/Data/UsetheHTTPEventCollector#Send_data_to_HTTP_Event_Collector_on_Splunk_Cloud_Platform) for re-ingestion pipeline
+- Create new [Splunk HEC Authentication Token](https://docs.splunk.com/Documentation/Splunk/9.0.1/Data/UsetheHTTPEventCollector#Configure_HTTP_Event_Collector_on_Splunk_Cloud_Platform) for re-ingestion pipeline
+
 ## Setup Process
 
-1. Create a new AWS Lambda Function (for kinesis processing)
-(Author from scratch)<br>
-Select Python 3.8 as the runtime<br>
-Permissions - <br>
-Create a new role with basic Lambda permissions<br>
-Click on "Create function"<br>
-Copy the function code <br>
-Copy the function code from from the kinesis_lambda_function.py source this repo directory, and replace/paste into your lambda function code (copy into the function file - lambda_function.py).<br>
-Increase the Timeout for the function to 5 minutes<br>
-Deploy the function
+1. Create a new S3 Bucket for Re-ingesting Data
 
-2. Set up a new Kinesis Firehose for Re-ingesting
-Create a new Kinesis Data Firehose delivery streams - <br>
-Give the delivery stream a name <br>
-Select "Direct PUT or other sources"<br>
-Click Next<br>
-Enable Transforming the records with Lambda<br>
-Select the new lambda function created in step 1<br>
-Click next<br>
-Select Destination as Splunk (Third-party service provider -> Splunk)<br>
-Enter the Splunk Cluster Endpoint URL<br>
-Select Event endpoint <br>
-Add Authentication token <br>
-Either Create a New S3 bucket OR select an existing bucket for the destination of "Backup S3 bucket"<br>
-Change the Timeout Period (Retry Duration) to a high value - suggest 600 seconds or above, so that it can give more time to retry the push to HEC <br>
-Accept all other defaults for rest of configuration and Create delivery stream
+2. Create a new AWS Lambda Function [Kinesis Transformation Lambda Function](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/firehose-reingest/kinesis_lambda_function.py)
+    (Author from scratch)  
+    Select Python 3.9 as the runtime  
+    Select Permissions  
+    Create a new role with basic Lambda permissions  
+    Click "Create function"  
+    Copy the function code from Kinesis Transformation Lambda Function, and replace/paste into your lambda function code.  
+    Increase the function timeout to 5 minutes  
+    Deploy the function.  
 
+3. Set up a new AWS Kinesis Firehose for Re-ingesting
+    Create a new Kinesis Data Firehose Delivery Stream  
+    Select "Direct PUT or other sources"  
+    Select Destination as Splunk  
+    Give the delivery stream a name (e.g. KDF_Splunk_Reingest)  
+    Enable Data Transformation under Transfer Records  
+    Select the new lambda function (Kinesis Transformation Lambda)  
+    Enter the Splunk Cluster Endpoint URL (e.g. ``https://http-inputs-firehose-<your stack hostname goes here>.splunkcloud.com/services/collector/raw``)
+    Select Raw endpoint  
+    Add existing HEC Authentication Token  
+    Change Retry Duration to a high value - suggested 600 seconds or above.  
+    Either Create a New S3 bucket OR select an existing bucket for the destination of "Backup S3 bucket"  
+    Accept all other defaults for rest of configuration and Create delivery stream  
 
-3. Create a new AWS Lambda Function (for re-try processing) <br>
-(Author from scratch)<br>
-Select Python 3.8 as the runtime<br>
-Permissions - <br>
-Create a new role from AWS policy templates<br>
-Give it a Role Name<br>
-Select "Amazon S3 object read-only permissions" from the Policy Templates<br>
+4. Create a new AWS Lambda Function [S3 Re-ingest Lambda Function](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/firehose-reingest/lambda_function.py)
+    (Author from scratch)  
+    Select Python 3.9 as the runtime  
+    Select Permissions  
+    Create a new role from AWS policy templates  
+    Give it a Role Name  
+    Select "Amazon S3 object read-only permissions" from the Policy Templates  
+    Click "Create function"  
+    Copy the function code from S3 Re-ingest Lambda Function, and replace/paste into your lambda function code.  
+    Update the permissions: Adding write permissions to Kinesis Firehose  
+    On your new function, select the "Permissions" tab, and click on the Execution role Role name (it will open up a new window with IAM Manager)  
+    In the Permissions Tab, you will see two attached policies, click "Add inline policy".  
+    In the Visual Editor add the following:  
+      1. Service - Firehose  
+      2. Actions - Write - PutRecordBatch  
+      3. Resources - Either enter the ARN for your Firehose OR tick the "Any in this account"  
+ 
+    Click Review Policy, and Save Changes  
+    Increase the Timeout for the function to 5 minutes  
 
-Click on "Create function"
+5. Update environment variables for the “S3 Re-ingest Lambda Function
+    Add the two environment variables:
+      1. **Firehose** - set the value to the name of the firehose that you wish to "reingest" the messages
+      2. **Region** - set the value of the AWS region where the firehose is set up
 
-4. Update Permissions<br>
-We will need to edit the policy to add write permission to Firehose<br>
-On your new function, select the "Permissions" tab, and click on the Execution role Role name (it will open up a new window with IAM Manager)<br>
-In the Permissions Tab, you will see two attached policies, click "Add inline policy". <br>
-In the Visual Editor add the following:<br>
-Service - Firehose<br>
-Actions - Write - PutRecordBatch<br>
-Resources - Either enter the ARN for your Firehose OR tick the "Any in this account"<br>
-
-Click Review Policy, and Save Changes
-
-5. Copy the function code <br>
-Copy the function code from from the lambda_function.py source this repo directory, and replace/paste into your lambda function code.<br>
-Increase the Timeout for the function to 5 minutes
-
-6. Update environment variables<br>
-Add the two environment variables:<br>
-**Firehose** - set the value to the name of the firehose that you wish to "reingesting" the messages <br>
-**Region** - set the value of the AWS region where the firehose is set up <br>
-(optional) **max_ingest** - set this to the number of times to re-ingest (perventing loops). If not set, defaults to 2 <br>
-And then Deploy
+6. Deploy the Function
 
 
-7. Create Event on S3 Bucket<br>
-Navigate to your AWS S3 Firehose Error bucket in the console (For the Source Kinesis Firehose)<br>
-On the Properties of the Bucket, Create event notification.<br>
-Give the event notification a name, and ensure you add the prefix "splunk-failed/" <br>
-(note if you have added another prefix in your Firehose configuration, you will need to add that to this prefix, for example if you added FH as the prefix in the firehose config, you will need to add "FHsplunk-failed/" here)<br>
-Select the "All object create events" check box.<br>
-Select "Lambda Function" as the Destination, and select the Lambda Function you created in step 3 from the dropdown.<br>
-Save Changes<br>
-
-8. Repeat Step 7, but for the Retry Firehose S3 Backup bucket
-Repeat the previous step, but this time, select the S3 bucket that was created / referred in step 2
-
+7. Create S3 Event Notification on the S3 Re-ingesting Data Bucket  
+    Navigate to your AWS S3 Re-ingesting Data bucket in the AWS S3 console  
+    Choose Properties  
+    Navigate to the Event Notifications section and choose Create event notification.  
+    Give the event notification a name, and ensure you add the prefix "splunk-failed/"*   
+    Select the "All object create events" check box.  
+    Select "Lambda Function" as the Destination, and select the S3 Re-ingest Lambda Function.  
+    Save Changes
 
 You are now all set with the solution.
 
+# Notes
+In Step 7, if you have added another prefix in your Firehose configuration, you will need to add that to this prefix, for example if you added FH as the prefix in the firehose config, you will need to add "FHsplunk-failed/" here  
+  
+Sample IAM Roles
 
+- [S3 Re-Ingest Lambda IAM Role Example](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/S3ReingestLambdaIAMRole)  
+- [Kinesis Lambda IAM Role Example](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/KinesisTransformationLambdaIAMRole.json)  
 
 # Alternative Options
 

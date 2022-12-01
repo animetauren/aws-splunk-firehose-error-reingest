@@ -9,8 +9,6 @@ import boto3
 import json
 import sys
 
-IS_PY3 = sys.version_info[0] == 3
-
 def processRecords(records):
     
     for r in records:
@@ -32,11 +30,7 @@ def processRecords(records):
         if data.get('fields')!=None:
             return_event['fields'] = data['fields']
 
-        if IS_PY3:
-            # base64 encode api changes in python3 to operate exclusively on byte-like objects and bytes
-            data = base64.b64encode(json.dumps(return_event).encode('utf-8')).decode()
-        else:
-            data = base64.b64encode(json.dumps(return_event))
+        data = base64.b64encode(json.dumps(return_event).encode('utf-8')).decode()
         yield {
             'data': data,
             'result': 'Ok',
@@ -126,8 +120,7 @@ def getReingestionRecord(isSas, reIngestionRecord):
 
 def lambda_handler(event, context):
     isSas = 'sourceKinesisStreamArn' in event
-    #streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']
-    streamARN = event['sourceKinesisStreamArn'] if isSas else event['hostarn']
+    streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']
     region = streamARN.split(':')[3]
     streamName = streamARN.split('/')[1]
     records = list(processRecords(event['records']))

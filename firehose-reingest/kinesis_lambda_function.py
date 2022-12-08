@@ -6,8 +6,10 @@ Only For processing data sent to Firehose by Re-ingest process. Note: Records ar
 
 import base64
 import boto3
+import os
 import json
-import sys
+
+sns=boto3.client('sns')
 
 def processRecords(records):
     
@@ -110,15 +112,38 @@ def createReingestionRecord(isSas, originalRecord):
     else:
         return {'data': base64.b64decode(originalRecord['data'])}
 
-
 def getReingestionRecord(isSas, reIngestionRecord):
     if isSas:
         return {'Data': reIngestionRecord['data'], 'PartitionKey': reIngestionRecord['partitionKey']}
     else:
         return {'Data': reIngestionRecord['data']}
 
+def postResultToSNS(TopicArn, msg_string):
+    try:
+        response = sns.publish(
+            TopicArn=TopicArn,
+            Message=msg_string,
+            MessageStructure='string',
+            MessageAttributes={
+                'string': {
+                    'DataType': 'string',
+                    'StringValue': 'string',
+                    'BinaryValue': b'bytes'
+                }
+            }
+        )
+    except Exception as e:
+        #Print error message, and send failure notification
+        print(e)           
+        raise e          
 
 def lambda_handler(event, context):
+    try:
+        TopicArn=os.environ['TopicArn']            
+    except:
+        print('TopicArn variable is not set!!')
+        return 
+
     isSas = 'sourceKinesisStreamArn' in event
     streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']
     region = streamARN.split(':')[3]
@@ -161,9 +186,14 @@ def lambda_handler(event, context):
                 putRecordsToKinesisStream(streamName, recordBatch, client, attemptsMade=0, maxAttempts=20)
             else:
                 putRecordsToFirehoseStream(streamName, recordBatch, client, attemptsMade=0, maxAttempts=20)
-            recordsReingestedSoFar += len(recordBatch)
+                recordsReingestedSoFar += len(recordBatch)
+            
+            #Send Success Message to SNS    
+            postResultToSNS(TopicArn, "Re-Ingest Sucessfull!")            
             print('Reingested %d/%d records out of %d' % (recordsReingestedSoFar, totalRecordsToBeReingested, len(event['records'])))
+
     else:
+        postResultToSNS(TopicArn, "Re-Ingest Failed!")
         print('No records to be reingested')
 
     return {"records": records}

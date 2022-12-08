@@ -34,9 +34,14 @@ Note that the "Splashback" S3 bucket where Firehose sends the failed messages al
     Click "Create function"  
     Copy the function code from Kinesis Transformation Lambda Function, and replace/paste into your lambda function code.  
     Increase the function timeout to 5 minutes  
+
+3. Update environment variables for the “S3 Re-ingest Lambda Function
+    Add the following environment variables:
+      1. (optional) **TopicArn** - set the arn value of the AWS SNS Topic you want to send a success/faulure message to.
+    
     Deploy the function.  
 
-3. Set up a new AWS Kinesis Firehose for Re-ingesting
+4. Set up a new AWS Kinesis Firehose for Re-ingesting
     Create a new Kinesis Data Firehose Delivery Stream  
     Select "Direct PUT or other sources"  
     Select Destination as Splunk  
@@ -50,7 +55,7 @@ Note that the "Splashback" S3 bucket where Firehose sends the failed messages al
     Either Create a New S3 bucket OR select an existing bucket for the destination of "Backup S3 bucket"  
     Accept all other defaults for rest of configuration and Create delivery stream  
 
-4. Create a new AWS Lambda Function [S3 Re-ingest Lambda Function](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/firehose-reingest/lambda_function.py)
+5. Create a new AWS Lambda Function [S3 Re-ingest Lambda Function](https://github.com/animetauren/aws-splunk-firehose-error-reingest/blob/main/firehose-reingest/lambda_function.py)
     (Author from scratch)  
     Select Python 3.9 as the runtime  
     Select Permissions  
@@ -70,13 +75,13 @@ Note that the "Splashback" S3 bucket where Firehose sends the failed messages al
     Click Review Policy, and Save Changes  
     Increase the Timeout for the function to 5 minutes  
 
-5. Update environment variables for the “S3 Re-ingest Lambda Function
-    Add the two environment variables:
+6. Update environment variables for the “S3 Re-ingest Lambda Function
+    Add the following environment variables:
       1. **Firehose** - set the value to the name of the firehose that you wish to "reingest" the messages
       2. **Region** - set the value of the AWS region where the firehose is set up
+      3. (optional) **Cleanup** - set this value to "True" if you would like your placeholder s3 bucket cleaned. If not set, defaults to "False".
 
-6. Deploy the Function
-
+    Deploy the Function
 
 7. Create S3 Event Notification on the S3 Re-ingesting Data Bucket  
     Navigate to your AWS S3 Re-ingesting Data bucket in the AWS S3 console  

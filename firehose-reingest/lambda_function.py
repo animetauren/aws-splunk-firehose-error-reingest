@@ -5,11 +5,43 @@
 # Function will Drop any unsent Events back into the ORIGINATING S3 Bucket. (after timeout)
 # Uses 3 Environment variables - firehose, region, and max_ingest
 
-import urllib.robotparser, boto3, json, re, base64, os, gzip
+import urllib.robotparser, boto3, json, base64, os, gzip
 from io import BytesIO
 from gzip import GzipFile
+
 s3=boto3.client('s3')
 
+def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAttempts):
+    failedRecords = []
+    codes = []
+    errMsg = ''
+    # if put_record_batch throws for whatever reason, response['xx'] will error out, adding a check for a valid
+    # response will prevent this
+    response = None
+    try:
+        response = client.put_record_batch(DeliveryStreamName=streamName, Records=records)
+    except Exception as e:
+        failedRecords = records
+        errMsg = str(e)
+
+    # if there are no failedRecords (put_record_batch succeeded), iterate over the response to gather results
+    if not failedRecords and response and response['FailedPutCount'] > 0:
+        for idx, res in enumerate(response['RequestResponses']):
+            # (if the result does not have a key 'ErrorCode' OR if it does and is empty) => we do not need to re-ingest
+            if 'ErrorCode' not in res or not res['ErrorCode']:
+                continue
+
+            codes.append(res['ErrorCode'])
+            failedRecords.append(records[idx])
+
+        errMsg = 'Individual error codes: ' + ','.join(codes)
+
+    if len(failedRecords) > 0:
+        if attemptsMade + 1 < maxAttempts:
+            print('Some records failed while calling PutRecordBatch to Firehose stream, retrying. %s' % (errMsg))
+            putRecordsToFirehoseStream(streamName, failedRecords, client, attemptsMade + 1, maxAttempts)
+        else:
+            raise RuntimeError('Could not put records after %s attempts. %s' % (str(maxAttempts), errMsg))
 
 def lambda_handler(event, context):
     
@@ -19,12 +51,12 @@ def lambda_handler(event, context):
     try:
         firehose_dest=os.environ['Firehose']
     except:
-        print('Firehose environment variable not set!!')
+        print('Firehose environment variable is not set!!')
         return
     try:
         region=os.environ['Region']
     except:
-        print('Region variable not set!!')
+        print('Region variable is not set!!')
         return
     try:
         max_ingest=int(os.environ['max_ingest'])
@@ -32,6 +64,14 @@ def lambda_handler(event, context):
             max_ingest=9 #do not ingest more than 9 times, even if set in environment
     except:
         max_ingest=2
+    try:
+        if os.environ['Cleanup'] == 'True':
+            clean_s3bucket = True
+        else:
+            clean_s3bucket = False            
+    except:
+        print('Cleanup variable is not set!!')
+        return       
     try:
         client = boto3.client('firehose', region_name=region)
         streamName=firehose_dest
@@ -141,41 +181,16 @@ def lambda_handler(event, context):
                 s3write = boto3.resource("s3")
                 s3write.Bucket(bucket_name).put_object(Key=s3_path, Body=s3payload[wbucket].encode("utf-8")) 
         
+        #Checking to see if we want to cleanup the old data that has been re-ingested.                
+        if clean_s3bucket:
+            response=s3.delete_object(Bucket=bucket, Key=key)
+            print("Cleaning the Bucket: {} and Path: {}").format(bucket, key)
+        else:
+            print("Cleanup not required")
+
         return 'Success!'
         
     except Exception as e:
-        print(e)
-        raise e    
-
-def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAttempts):
-    failedRecords = []
-    codes = []
-    errMsg = ''
-    # if put_record_batch throws for whatever reason, response['xx'] will error out, adding a check for a valid
-    # response will prevent this
-    response = None
-    try:
-        response = client.put_record_batch(DeliveryStreamName=streamName, Records=records)
-    except Exception as e:
-        failedRecords = records
-        errMsg = str(e)
-
-    # if there are no failedRecords (put_record_batch succeeded), iterate over the response to gather results
-    if not failedRecords and response and response['FailedPutCount'] > 0:
-        for idx, res in enumerate(response['RequestResponses']):
-            # (if the result does not have a key 'ErrorCode' OR if it does and is empty) => we do not need to re-ingest
-            if 'ErrorCode' not in res or not res['ErrorCode']:
-                continue
-
-            codes.append(res['ErrorCode'])
-            failedRecords.append(records[idx])
-
-        errMsg = 'Individual error codes: ' + ','.join(codes)
-
-    if len(failedRecords) > 0:
-        if attemptsMade + 1 < maxAttempts:
-            print('Some records failed while calling PutRecordBatch to Firehose stream, retrying. %s' % (errMsg))
-            putRecordsToFirehoseStream(streamName, failedRecords, client, attemptsMade + 1, maxAttempts)
-        else:
-            raise RuntimeError('Could not put records after %s attempts. %s' % (str(maxAttempts), errMsg))
-
+        #Print error message, and send failure notification
+        print(e)           
+        raise e

@@ -15,6 +15,11 @@
             "Resource": [
                 "arn:aws:logs:<region>:<aws account number>:log-group:/aws/lambda/<Kinesis Transformation Lambda Function Name>:*"
             ]
-        }
+        },
+        {
+            "Effect": "Allow",
+            "Action": "sns:Publish",
+            "Resource": "arn:aws:sns:<region>:<aws account number>:<topic_name>"
+        }        
     ]
 }

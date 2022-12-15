@@ -70,8 +70,7 @@ def lambda_handler(event, context):
         else:
             clean_s3bucket = False            
     except:
-        print('Cleanup variable is not set!!')
-        return       
+        clean_s3bucket = False       
     try:
         client = boto3.client('firehose', region_name=region)
         streamName=firehose_dest

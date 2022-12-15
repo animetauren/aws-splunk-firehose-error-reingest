@@ -138,11 +138,11 @@ def postResultToSNS(TopicArn, msg_string):
         raise e          
 
 def lambda_handler(event, context):
-    try:
-        TopicArn=os.environ['TopicArn']            
-    except:
-        print('TopicArn variable is not set!!')
-        return 
+#     try:
+#         TopicArn=os.environ['TopicArn']            
+#     except:
+#         print('TopicArn variable is not set!!')
+#         return 
 
     isSas = 'sourceKinesisStreamArn' in event
     streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']
@@ -189,7 +189,7 @@ def lambda_handler(event, context):
                 recordsReingestedSoFar += len(recordBatch)
             
             #Send Success Message to SNS    
-            postResultToSNS(TopicArn, "Re-Ingest Sucessfull!")            
+            #postResultToSNS(TopicArn, "Re-Ingest Sucessfull!")            
             print('Reingested %d/%d records out of %d' % (recordsReingestedSoFar, totalRecordsToBeReingested, len(event['records'])))
 
     else:

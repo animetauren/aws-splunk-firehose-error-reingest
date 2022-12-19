@@ -31,6 +31,10 @@ def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAtt
             if 'ErrorCode' not in res or not res['ErrorCode']:
                 continue
 
+            if 'ServiceUnavailableException' in res['ErrorMessage']:
+                print("ServiceUnavailableException")
+                print("The service (Kinesis Firehose) is unavailable.\n Back off and retry the operation.\n If you continue to see the exception,\n throughput limits for the delivery stream may have been exceeded.")
+
             codes.append(res['ErrorCode'])
             failedRecords.append(records[idx])
 
@@ -70,8 +74,7 @@ def lambda_handler(event, context):
         else:
             clean_s3bucket = False            
     except:
-        print('Cleanup variable is not set!!')
-        return       
+        clean_s3bucket = False             
     try:
         client = boto3.client('firehose', region_name=region)
         streamName=firehose_dest

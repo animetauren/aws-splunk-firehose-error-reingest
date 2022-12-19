@@ -70,7 +70,8 @@ def lambda_handler(event, context):
         else:
             clean_s3bucket = False            
     except:
-        clean_s3bucket = False       
+        print('Cleanup variable is not set!!')
+        return       
     try:
         client = boto3.client('firehose', region_name=region)
         streamName=firehose_dest
@@ -104,12 +105,18 @@ def lambda_handler(event, context):
                 except (UnicodeDecodeError, AttributeError):
                     message = (gzip.decompress(message_bytes)).decode('utf-8')                    
                     pass
+
                 for messageline in message.split("\n"): #process every line of the batch
                     if len(messageline)>0:
                     
                         try:
                             dest='FH'
-                            jsondata=json.loads(messageline)
+                            try:
+                                jsondata=json.loads(messageline)
+                            except Exception as e:
+                                print("Error: Malformed event message, not valid JSON. See below for event message:")
+                                print(messageline)
+                                return
 
                             #get the metadata
                             if jsondata.get('source')!=None:
@@ -121,6 +128,7 @@ def lambda_handler(event, context):
                                 st=jsondata.get('sourcetype')
                             else:
                                 st='aws:firehose'
+                            
                             fieldsreingest={}
                             
                             if jsondata.get('fields')!=None:
@@ -154,7 +162,7 @@ def lambda_handler(event, context):
 
                         except Exception as e:
                             print(e)
-                            #reingestjson= {'reingest':jsondata['fields'], 'sourcetype':jsondata['sourcetype'], 'source':'reingest:'+str(reingest_count), 'detail-type':'Reingested Firehose Message','event':jsondata['event']}
+                            reingestjson= {'reingest':jsondata['fields'], 'sourcetype':jsondata['sourcetype'], 'source':'reingest:'+str(reingest_count), 'detail-type':'Reingested Firehose Message','event':jsondata['event']}
                         
                         
                         if dest=='FH':
@@ -167,6 +175,7 @@ def lambda_handler(event, context):
                                 putRecordsToFirehoseStream(streamName, recordBatch, client, attemptsMade=0, maxAttempts=20)
                                 destFH=0
                                 recordBatch=[]
+        
         #flush all        
         if destFH>0: 
             putRecordsToFirehoseStream(streamName, recordBatch, client, attemptsMade=0, maxAttempts=20)

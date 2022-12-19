@@ -3,8 +3,14 @@
     "Statement": [
         {
             "Effect": "Allow",
-            "Action": "logs:CreateLogGroup",
-            "Resource": "arn:aws:logs:<region>:<aws account number>:*"
+            "Action": [
+                "logs:CreateLogGroup",
+                "firehose:PutRecordBatch"
+            ],
+            "Resource": [
+                "arn:aws:logs:<region>:<aws account number>:*",
+                "arn:aws:firehose:<region>:<aws account number>:deliverystream/<Kinesis Firehose Stream Name>"
+            ]
         },
         {
             "Effect": "Allow",

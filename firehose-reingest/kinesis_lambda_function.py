@@ -19,20 +19,17 @@ def processRecords(records):
         recId = r['recordId']
         return_event = {}
 
-        try:
-            return_event['sourcetype'] = data['sourcetype']
-            break
-        except Exception as e:
-            print("Error:" + str(e))
-            print(data)
+        return_event['sourcetype'] = data['sourcetype']
         return_event['source'] = data['source']
         return_event['event'] = data['event']
+        
         if data.get('time')!=None:
             return_event['time'] = data['time']
         if data.get('fields')!=None:
             return_event['fields'] = data['fields']
 
         data = base64.b64encode(json.dumps(return_event).encode('utf-8')).decode()
+        
         yield {
             'data': data,
             'result': 'Ok',

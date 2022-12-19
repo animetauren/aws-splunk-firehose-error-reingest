@@ -59,7 +59,11 @@ def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAtt
             # (if the result does not have a key 'ErrorCode' OR if it does and is empty) => we do not need to re-ingest
             if 'ErrorCode' not in res or not res['ErrorCode']:
                 continue
-
+            
+            if 'ServiceUnavailableException' in res['ErrorMessage']:
+                print("ServiceUnavailableException")
+                print("The service (Kinesis Firehose) is unavailable.\n Back off and retry the operation.\n If you continue to see the exception,\n throughput limits for the delivery stream may have been exceeded.")
+            
             codes.append(res['ErrorCode'])
             failedRecords.append(records[idx])
 
@@ -92,6 +96,10 @@ def putRecordsToKinesisStream(streamName, records, client, attemptsMade, maxAtte
             # (if the result does not have a key 'ErrorCode' OR if it does and is empty) => we do not need to re-ingest
             if 'ErrorCode' not in res or not res['ErrorCode']:
                 continue
+            
+            if 'ServiceUnavailableException' in res['ErrorMessage']:
+                print("ServiceUnavailableException")
+                print("The service (Kinesis Stream) is unavailable.\n Back off and retry the operation.\n If you continue to see the exception,\n throughput limits for the delivery stream may have been exceeded.")
 
             codes.append(res['ErrorCode'])
             failedRecords.append(records[idx])

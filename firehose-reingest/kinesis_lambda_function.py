@@ -29,7 +29,7 @@ def processRecords(records):
             return_event['fields'] = data['fields']
 
         data = base64.b64encode(json.dumps(return_event).encode('utf-8')).decode()
-        
+
         yield {
             'data': data,
             'result': 'Ok',
@@ -196,7 +196,6 @@ def lambda_handler(event, context):
             #Send Success Message to SNS    
             # postResultToSNS(TopicArn, "Re-Ingest Sucessfull!")            
             print('Reingested %d/%d records out of %d' % (recordsReingestedSoFar, totalRecordsToBeReingested, len(event['records'])))
-
     else:
         # postResultToSNS(TopicArn, "Re-Ingest Failed!")
         print('No records to be reingested')

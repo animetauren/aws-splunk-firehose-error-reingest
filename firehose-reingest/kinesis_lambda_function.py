@@ -165,7 +165,7 @@ def lambda_handler(event, context):
             continue
         projectedSize += len(rec['data']) + len(rec['recordId'])
         # 6000000 instead of 6291456 to leave ample headroom for the stuff we didn't account for
-        if projectedSize < 6000000:
+        if projectedSize > 6000000:
             totalRecordsToBeReingested += 1
             recordsToReingest.append(
                 getReingestionRecord(isSas, dataByRecordId[rec['recordId']])
@@ -185,19 +185,17 @@ def lambda_handler(event, context):
     # iterate and call putRecordBatch for each group
     recordsReingestedSoFar = 0
     if len(putRecordBatches) > 0:
+        print("Starting process to batch ingest records into Kinesis Firehose....")
         client = boto3.client('kinesis', region_name=region) if isSas else boto3.client('firehose', region_name=region)
         for recordBatch in putRecordBatches:
             if isSas:
                 putRecordsToKinesisStream(streamName, recordBatch, client, attemptsMade=0, maxAttempts=20)
             else:
                 putRecordsToFirehoseStream(streamName, recordBatch, client, attemptsMade=0, maxAttempts=20)
-                recordsReingestedSoFar += len(recordBatch)
-            
-            #Send Success Message to SNS    
-            # postResultToSNS(TopicArn, "Re-Ingest Sucessfull!")            
-            print('Reingested %d/%d records out of %d' % (recordsReingestedSoFar, totalRecordsToBeReingested, len(event['records'])))
+                recordsReingestedSoFar += len(recordBatch)         
+            print('Batched ingested %d/%d records out of %d' % (recordsReingestedSoFar, totalRecordsToBeReingested, len(event['records'])))
     else:
-        # postResultToSNS(TopicArn, "Re-Ingest Failed!")
-        print('No records to be reingested')
+        print("Completed Data Transformation.")
+        print('No records need to be batch ingested into Kinesis Firehose.')
 
     return {"records": records}

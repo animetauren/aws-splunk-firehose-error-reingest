@@ -9,7 +9,7 @@ import urllib.robotparser, boto3, json, base64, os, gzip
 from io import BytesIO
 from gzip import GzipFile
 
-s3=boto3.client('s3')
+s3_client=boto3.client('s3')
 
 def putRecordsToFirehoseStream(streamName, records, client, attemptsMade, maxAttempts):
     failedRecords = []
@@ -79,7 +79,7 @@ def lambda_handler(event, context):
         client = boto3.client('firehose', region_name=region)
         streamName=firehose_dest
 
-        response=s3.get_object(Bucket=bucket, Key=key)
+        response=s3_client.get_object(Bucket=bucket, Key=key)
 
         if key.endswith('.gz'):
             bytestream = BytesIO(response['Body'].read())
@@ -138,7 +138,6 @@ def lambda_handler(event, context):
                                 
                                 fieldsreingest=jsondata.get('fields') #get reingest fields
                                 reingest_count=int(fieldsreingest.get('reingest'))+1 #advance counter
-                                print("fields")
                                 
                                 fieldsreingest['reingest']=str(reingest_count)
                                 mbucket=fieldsreingest["frombucket"]
@@ -192,16 +191,16 @@ def lambda_handler(event, context):
                 s3write = boto3.resource("s3")
                 s3write.Bucket(bucket_name).put_object(Key=s3_path, Body=s3payload[wbucket].encode("utf-8")) 
         
-        #Checking to see if we want to cleanup the old data that has been re-ingested.                
-        if clean_s3bucket:
-            response=s3.delete_object(Bucket=bucket, Key=key)
-            print("Cleaning the Bucket: {} and Path: {}").format(bucket, key)
-        else:
-            print("Cleanup not required")
-
-        return 'Success!'
-        
     except Exception as e:
         #Print error message, and send failure notification
         print(e)           
         raise e
+
+    #Checking to see if we want to cleanup the old data that has been re-ingested.                
+    if clean_s3bucket:
+        response = s3_client.delete_object(Bucket=bucket, Key=key)
+        print("Cleaning Bucket: {} and Path: {}".format(bucket, key))
+    else:
+        print("Cleanup not required")
+
+    return 'Success!'

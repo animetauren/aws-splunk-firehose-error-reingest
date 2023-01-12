@@ -9,8 +9,6 @@ import boto3
 import os
 import json
 
-sns=boto3.client('sns')
-
 def processRecords(records):
     
     for r in records:
@@ -121,33 +119,9 @@ def getReingestionRecord(isSas, reIngestionRecord):
     if isSas:
         return {'Data': reIngestionRecord['data'], 'PartitionKey': reIngestionRecord['partitionKey']}
     else:
-        return {'Data': reIngestionRecord['data']}
-
-def postResultToSNS(TopicArn, msg_string):
-    try:
-        response = sns.publish(
-            TopicArn=TopicArn,
-            Message=msg_string,
-            MessageStructure='string',
-            MessageAttributes={
-                'string': {
-                    'DataType': 'string',
-                    'StringValue': 'string',
-                    'BinaryValue': b'bytes'
-                }
-            }
-        )
-    except Exception as e:
-        #Print error message, and send failure notification
-        print(e)           
-        raise e          
+        return {'Data': reIngestionRecord['data']}        
 
 def lambda_handler(event, context):
-
-    # try:
-    #     TopicArn=os.environ['TopicArn']
-    # except:
-    #     print('TopicArn variable is not set!!') 
 
     isSas = 'sourceKinesisStreamArn' in event
     streamARN = event['sourceKinesisStreamArn'] if isSas else event['deliveryStreamArn']

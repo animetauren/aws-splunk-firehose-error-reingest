@@ -90,7 +90,7 @@ Note that the "Splashback" S3 bucket where KDF sends the failed messages also co
     Save Changes
 
 7. *Conditional* If running Splunk Enterprise:
-     Configure HTTP Event Collector (HEC) indexer acknowledgment - [Splunk Docs Instructions] (<https://docs.splunk.com/Documentation/Splunk/9.0.3/Data/AboutHECIDXAck>)
+     Configure HTTP Event Collector (HEC) indexer acknowledgment - [Splunk Docs Instructions](https://docs.splunk.com/Documentation/Splunk/9.0.3/Data/AboutHECIDXAck)
 
 ## Notes
 
